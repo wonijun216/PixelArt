@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>픽셀보드 | 축제 방명록</title>
+  <style>
+    :root { --bg:#ffffff; --fg:#111; --muted:#666; --accent:#4f46e5; }
+    html,body{height:100%;}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--fg);} 
+    .wrap{max-width:960px;margin:0 auto;padding:16px;}
+    header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:8px 0 12px;}
+    h1{font-size:20px;margin:0;font-weight:800;}
+    .muted{color:var(--muted);font-size:12px}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 16px}
+    .controls label{font-size:12px;color:var(--muted)}
+    .controls input[type="text"]{padding:8px 10px;border:1px solid #ddd;border-radius:12px;font-size:14px}
+    .controls input[type="color"]{width:44px;height:36px;border:1px solid #ddd;border-radius:10px;padding:0}
+    .btn{padding:8px 12px;border:1px solid #ddd;border-radius:12px;background:#fff;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .boardWrap{position:relative;border:1px solid #e5e7eb;border-radius:16px;padding:12px;background:#fff;}
+    canvas{width:100%;height:auto;border-radius:8px;touch-action:manipulation;}
+    .tip{font-size:12px;color:var(--muted);margin-top:8px}
+    footer{margin:16px 0;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;align-items:center}
+    .pill{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 10px;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>픽셀보드 — 축제 방명록</h1>
+      <div class="pill">보드: <span id="boardName">(로딩중)</span></div>
+    </header>
+
+    <div class="controls">
+      <div>
+        <label>닉네임</label><br/>
+        <input id="nickname" type="text" placeholder="예: 이원준" maxlength="12" />
+      </div>
+      <div>
+        <label>색상</label><br/>
+        <input id="picker" type="color" value="#a7f3d0" />
+      </div>
+      <button id="shareBtn" class="btn">공유 링크 복사</button>
+      <button id="newBoardBtn" class="btn">새 보드 만들기</button>
+      <span class="muted">한 칸은 한 사람의 흔적입니다. 이미 채워진 칸은 잠깁니다.</span>
+    </div>
+
+    <div class="boardWrap">
+      <canvas id="board" width="768" height="768"></canvas>
+      <div class="tip">칸을 탭/클릭해서 색을 칠하세요. 닉네임을 먼저 입력해야 기록됩니다.</div>
+    </div>
+
+    <footer>
+      <div>© <span id="y"></span> PixelBoard – Programming Club</div>
+      <a href="#" id="how">운영 팁</a>
+    </footer>
+  </div>
+
+  <!-- Firebase SDK (v10) CDN 로드: 모듈 방식 -->
+  <script type="module">
+    // 1) Firebase SDK 로드
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    // 2) 아래 설정을 Firebase 콘솔 > 프로젝트 설정 > SDK 설정/구성에서 복사하여 붙여넣으세요
+	const firebaseConfig = {
+		apiKey: "AIzaSyBjTIvP-E9KfZXFzuNE4sF9DmGzD4XkvEE",
+		authDomain: "pixelart-e899e.firebaseapp.com",
+		projectId: "pixelart-e899e",
+		storageBucket: "pixelart-e899e.firebasestorage.app",
+		messagingSenderId: "636347114408",
+		appId: "1:636347114408:web:287e0ab9e7090f809a739d",
+		measurementId: "G-GR67MDV42F"
+	};
+
+    // 3) 앱/DB 초기화
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ====== 보드 기본값 ======
+    const BOARD_SIZE = 64; // Firestore 보안규칙의 범위와 반드시 같아야 합니다!
+
+    // ====== DOM ======
+    const $y = document.getElementById('y');
+    $y.textContent = new Date().getFullYear();
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    const nicknameEl = document.getElementById('nickname');
+    const colorEl = document.getElementById('picker');
+    const boardNameEl = document.getElementById('boardName');
+    const shareBtn = document.getElementById('shareBtn');
+    const newBoardBtn = document.getElementById('newBoardBtn');
+
+    // ====== 보드ID (URL ?board=축제2025) ======
+    const params = new URLSearchParams(location.search);
+    const boardId = params.get('board') || 'festival';
+    boardNameEl.textContent = boardId;
+
+    // 공유 링크 복사
+    shareBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(location.origin + location.pathname + `?board=${encodeURIComponent(boardId)}`);
+        shareBtn.textContent = '복사됨!';
+        setTimeout(() => (shareBtn.textContent = '공유 링크 복사'), 1000);
+      } catch (e) {
+        alert('클립보드 접근이 안 됩니다. 주소창 링크를 직접 복사하세요.');
+      }
+    });
+
+    // 새 보드 만들기 (간단히 프롬프트)
+    newBoardBtn.addEventListener('click', () => {
+      const name = prompt('새 보드 이름을 입력하세요 (영문/숫자 추천):', 'class1');
+      if (!name) return;
+      const url = location.origin + location.pathname + `?board=${encodeURIComponent(name)}`;
+      location.href = url;
+    });
+
+    // ====== 캔버스 렌더링 ======
+    function drawGrid() {
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0,0,w,h);
+      // 배경
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,w,h);
+      // 그리드 (얇은 회색)
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      const cell = w / BOARD_SIZE;
+      ctx.beginPath();
+      for (let i=0;i<=BOARD_SIZE;i++) {
+        const p = Math.round(i*cell)+0.5; // 선명한 1px
+        ctx.moveTo(p,0); ctx.lineTo(p,h);
+        ctx.moveTo(0,p); ctx.lineTo(w,p);
+      }
+      ctx.stroke();
+    }
+
+    // 보드 셀 데이터: key="x_y" -> color
+    const cells = new Map();
+
+    function redrawCells() {
+      const w = canvas.width;
+      const cell = w / BOARD_SIZE;
+      for (const [key, color] of cells.entries()) {
+        const [x,y] = key.split('_').map(Number);
+        ctx.fillStyle = color;
+        ctx.fillRect(x*cell+1, y*cell+1, cell-1, cell-1);
+      }
+    }
+
+    function renderAll() { drawGrid(); redrawCells(); }
+
+    // 실시간 구독
+    const cellsCol = collection(db, 'boards', boardId, 'cells');
+    onSnapshot(cellsCol, (snap) => {
+      cells.clear();
+      snap.forEach(doc => {
+        const d = doc.data();
+        if (typeof d.x === 'number' && typeof d.y === 'number' && typeof d.color === 'string') {
+          cells.set(`${d.x}_${d.y}`, d.color);
+        }
+      });
+      renderAll();
+    });
+
+    // 좌표 계산
+    function getCellFromEvent(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clientX = (evt.touches ? evt.touches[0].clientX : evt.clientX);
+      const clientY = (evt.touches ? evt.touches[0].clientY : evt.clientY);
+      const x = Math.floor(((clientX - rect.left) * scaleX) / (canvas.width / BOARD_SIZE));
+      const y = Math.floor(((clientY - rect.top) * scaleY) / (canvas.height / BOARD_SIZE));
+      return {x,y};
+    }
+
+    async function paintCell(x,y) {
+      const nick = nicknameEl.value.trim();
+      if (!nick) { alert('닉네임을 먼저 입력하세요!'); return; }
+      if (nick.length > 12) { alert('닉네임은 12자 이내'); return; }
+      if (x<0 || y<0 || x>=BOARD_SIZE || y>=BOARD_SIZE) return;
+      const color = colorEl.value;
+      const id = `${x}_${y}`;
+      const ref = doc(db, 'boards', boardId, 'cells', id);
+      try {
+        await setDoc(ref, {
+          x, y, color,
+          nickname: nick,
+          updatedAt: serverTimestamp(),
+        });
+        // 성공하면 셀은 실시간 구독을 통해 다시 그려집니다
+      } catch (e) {
+        // 룰 위반(이미 채워짐 등)
+        alert('이미 채워진 칸이거나, 입력 형식이 맞지 않습니다. 다른 칸을 선택하세요!');
+      }
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const {x,y} = getCellFromEvent(e);
+      paintCell(x,y);
+    });
+    canvas.addEventListener('touchstart', (e) => {
+      const {x,y} = getCellFromEvent(e);
+      paintCell(x,y);
+      e.preventDefault();
+    }, {passive:false});
+
+    // 첫 렌더
+    renderAll();
+  </script>
+
+  <!-- ===================== 복사해서 Firebase 보안 규칙에 넣을 내용 =====================
+  1) Firebase 콘솔 > Firestore Database > 규칙 탭에 아래를 붙여넣으세요
+  2) BOARD_SIZE(여기선 64)와 HTML 상단의 BOARD_SIZE가 동일해야 합니다
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /boards/{boardId}/cells/{cellId} {
+      allow read: if true; // 모두 읽기 허용 (축제용)
+      // 새로 칠하기만 허용 (이미 채워진 칸은 수정 불가)
+      allow create: if
+        request.resource.data.keys().hasOnly(['x','y','color','nickname','updatedAt']) &&
+        request.resource.data.x is int && request.resource.data.y is int &&
+        request.resource.data.x >= 0 && request.resource.data.x < 64 &&
+        request.resource.data.y >= 0 && request.resource.data.y < 64 &&
+        request.resource.data.color is string &&
+        request.resource.data.color.matches('^#[0-9A-Fa-f]{6}$') &&
+        request.resource.data.nickname is string &&
+        request.resource.data.nickname.size() > 0 && request.resource.data.nickname.size() <= 12 &&
+        request.resource.data.updatedAt is timestamp &&
+        request.time < timestamp.date(2026, 1, 1);
+      allow update, delete: if false; // 덮어쓰기, 삭제 금지
+    }
+  }
+}
+
+  ============================================================================ -->
+</body>
+</html>
