@@ -5,24 +5,93 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>픽셀보드</title>
 <style>
-:root { --bg:#fff; --fg:#111; --muted:#666; --accent:#4f46e5; }
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--fg);} 
-.wrap{max-width:1200px;margin:0 auto;padding:16px;}
-header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:8px 0 12px;}
-h1{font-size:20px;margin:0;font-weight:800;}
-.muted{color:var(--muted);font-size:12px}
-.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 16px}
-.controls label{font-size:12px;color:var(--muted)}
-.controls input[type="text"], .controls input[type="email"], .controls input[type="password"]{padding:8px 10px;border:1px solid #ddd;border-radius:12px;font-size:14px}
-.controls input[type="color"]{width:44px;height:36px;border:1px solid #ddd;border-radius:10px;padding:0}
-.btn{padding:8px 12px;border:1px solid #ddd;border-radius:12px;background:#fff;cursor:pointer}
-.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-.boardContainer{display:flex;gap:16px;align-items:flex-start;}
-.boardWrap{flex:1;position:relative;border:1px solid #e5e7eb;border-radius:16px;padding:12px;background:#fff;}
-canvas{width:100%;height:auto;border-radius:8px;touch-action:manipulation;}
-.tip{font-size:12px;color:var(--muted);margin-top:8px}
-footer{margin:16px 0;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;align-items:center}
-.pill{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 10px;font-size:12px}
+:root {
+  --bg:#fff;
+  --fg:#111;
+  --muted:#666;
+  --accent:#4f46e5;
+}
+html, body {
+  height:100%;
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--fg);
+}
+.wrap {
+  max-width:1200px;
+  margin:0 auto;
+  padding:16px;
+}
+header {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:space-between;
+  margin:8px 0 12px;
+}
+h1 { font-size:20px;margin:0;font-weight:800; }
+.muted { color:var(--muted); font-size:12px; }
+
+.controls {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:center;
+  margin:8px 0 16px;
+}
+.controls label { font-size:14px; color:var(--muted); }
+.controls input[type="text"], .controls input[type="email"], .controls input[type="password"]{
+  padding:12px 16px;
+  border:1px solid #ddd;
+  border-radius:12px;
+  font-size:16px;
+}
+.controls input[type="color"]{ width:44px; height:36px; border:1px solid #ddd; border-radius:10px; padding:0; }
+
+.btn {
+  padding:12px 16px;
+  border:1px solid #ddd;
+  border-radius:12px;
+  background:#fff;
+  cursor:pointer;
+  font-size:16px;
+}
+.btn.primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+
+.boardContainer {
+  display:flex;
+  gap:16px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+}
+.boardWrap {
+  flex:1 1 400px;
+  position:relative;
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  padding:12px;
+  background:#fff;
+}
+canvas{
+  width:100%;
+  height:auto;
+  border-radius:8px;
+  touch-action: manipulation;
+}
+
+.tip{ font-size:12px; color:var(--muted); margin-top:8px }
+footer{ margin:16px 0; color:var(--muted); font-size:12px; display:flex; justify-content:space-between; align-items:center }
+
+.pill{
+  background:#f1f5f9;
+  border:1px solid #e2e8f0;
+  border-radius:999px;
+  padding:4px 10px;
+  font-size:12px;
+}
+
 .eraseMode { background:#f87171; color:#fff; border-color:#f87171; }
 .hidden { display:none; }
 
@@ -33,6 +102,7 @@ footer{margin:16px 0;color:var(--muted);font-size:12px;display:flex;justify-cont
   border-radius:16px;
   background:#fff;
   padding:12px;
+  flex-shrink:0;
 }
 #contributorsWrap h3 {
   font-size:14px;
@@ -50,6 +120,13 @@ footer{margin:16px 0;color:var(--muted);font-size:12px;display:flex;justify-cont
   display:block;
   padding:2px 0;
   border-bottom:1px solid #f1f5f9;
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+  .controls { flex-direction: column; gap:12px; }
+  .boardContainer { flex-direction: column; align-items:center; }
+  #contributorsWrap { width:100%; max-width:360px; margin-top:12px; }
 }
 </style>
 </head>
@@ -92,7 +169,7 @@ footer{margin:16px 0;color:var(--muted);font-size:12px;display:flex;justify-cont
   <div class="boardContainer">
     <div class="boardWrap">
       <canvas id="board" width="768" height="768"></canvas>
-      <div class="tip">빈칸을 클릭해서 색칠하세요. 닉네임을 입력해야 기록됩니다.</div>
+      <div class="tip">빈칸을 클릭하거나 드래그해서 색칠하세요. 닉네임을 입력해야 기록됩니다.</div>
     </div>
 
     <div id="contributorsWrap">
@@ -188,17 +265,10 @@ onAuthStateChanged(auth, user=>{
 let previousNickname = "";
 nicknameEl.addEventListener("change", async () => {
   const newNick = nicknameEl.value.trim();
-  if (!previousNickname) {
-    previousNickname = newNick;
-    return;
-  }
+  if (!previousNickname) { previousNickname = newNick; return; }
   if (newNick && newNick !== previousNickname) {
     const ok = confirm(`닉네임을 '${previousNickname}'에서 '${newNick}'(으)로 변경하시겠습니까?`);
-    if (!ok) {
-      nicknameEl.value = previousNickname;
-      return;
-    }
-    // Firestore에서 이 유저의 모든 셀 닉네임 업데이트
+    if (!ok) { nicknameEl.value = previousNickname; return; }
     const q = await getDocs(collection(db, 'boards', boardId, 'cells'));
     for (const d of q.docs) {
       const data = d.data();
@@ -215,7 +285,7 @@ shareBtn.addEventListener('click', async ()=>{
   try{
     await navigator.clipboard.writeText(location.origin + location.pathname + `?board=${encodeURIComponent(boardId)}`);
     shareBtn.textContent='복사되었습니다';
-    setTimeout(()=>shareBtn.textContent='공유 링크 복사',1000);
+    setTimeout(()=>shareBtn.textContent='링크 복사',1000);
   }catch(e){ alert('복사 실패'); }
 });
 
@@ -226,7 +296,7 @@ newBoardBtn.addEventListener('click', ()=>{
   location.href = location.origin + location.pathname + `?board=${encodeURIComponent(name)}`;
 });
 
-// 보드 그리기
+// 그리드
 function drawGrid(){ 
   const w=canvas.width,h=canvas.height; 
   ctx.clearRect(0,0,w,h); 
@@ -260,14 +330,13 @@ onSnapshot(cellsCol,snap=>{
     }
   });
   renderAll();
-
   const sorted = Array.from(nickSet).sort((a,b)=>a.localeCompare(b,'ko'));
   contributorsList.innerHTML = sorted.length 
     ? sorted.map(n=>`<span>${n}</span>`).join('') 
     : '<span class="muted">(없음)</span>';
 });
 
-// 셀 클릭
+// 셀 좌표 계산
 function getCellFromEvent(evt){
   const rect=canvas.getBoundingClientRect();
   const scaleX=canvas.width/rect.width;
@@ -279,6 +348,7 @@ function getCellFromEvent(evt){
   return {x,y};
 }
 
+// 셀 색칠/삭제
 async function paintCell(x,y){
   const nick = nicknameEl.value.trim();
   if(!nick){ alert('닉네임을 입력하세요'); return; }
@@ -304,8 +374,17 @@ eraseBtn.addEventListener('click', ()=>{
   eraseBtn.textContent = eraseMode ? '지우개 ON' : '지우개';
 });
 
-canvas.addEventListener('click', e=>{ const {x,y}=getCellFromEvent(e); paintCell(x,y); });
-canvas.addEventListener('touchstart', e=>{ const {x,y}=getCellFromEvent(e); paintCell(x,y); e.preventDefault(); },{passive:false});
+// 클릭 + 드래그 색칠 지원
+let isDrawing = false;
+canvas.addEventListener('mousedown', e => { isDrawing=true; const {x,y}=getCellFromEvent(e); paintCell(x,y); });
+canvas.addEventListener('mousemove', e => { if(!isDrawing) return; const {x,y}=getCellFromEvent(e); paintCell(x,y); });
+canvas.addEventListener('mouseup', e => { isDrawing=false; });
+canvas.addEventListener('mouseleave', e => { isDrawing=false; });
+
+// 모바일 터치
+canvas.addEventListener('touchstart', e=>{ isDrawing=true; const {x,y}=getCellFromEvent(e); paintCell(x,y); e.preventDefault(); },{passive:false});
+canvas.addEventListener('touchmove', e=>{ if(!isDrawing) return; const {x,y}=getCellFromEvent(e); paintCell(x,y); e.preventDefault(); },{passive:false});
+canvas.addEventListener('touchend', e=>{ isDrawing=false; },{passive:false});
 
 renderAll();
 </script>
