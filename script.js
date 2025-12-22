@@ -230,34 +230,54 @@ function renderArtworks() {
     });
   });
   
-  // 썸네일 렌더링
-  filtered.forEach(artwork => {
-    renderThumbnail(artwork.id);
-  });
+  // 순차적 썸네일 렌더링
+  renderThumbnailsSequentially(filtered);
 }
 
+// 순차적 렌더링 (최적화)
+async function renderThumbnailsSequentially(artworksList) {
+  for(const artwork of artworksList) {
+    await renderThumbnail(artwork.id);
+    // 각 썸네일 사이에 짧은 딜레이 (브라우저가 숨 쉴 시간)
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+}
+
+// 썸네일 렌더링 (최적화됨)
 async function renderThumbnail(artworkId) {
   const canvas = document.getElementById(`thumb-${artworkId}`);
   if(!canvas) return;
   
   const ctx = canvas.getContext('2d');
   
-  // 캔버스 크기를 640x640으로 설정
+  // 캔버스 크기 설정
   canvas.width = 640;
   canvas.height = 640;
   
+  // 배경 흰색
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, 640, 640);
   
-  const cellsRef = collection(db, 'artworks', artworkId, 'cells');
-  const snapshot = await getDocs(cellsRef);
-  
-  const cellSize = 640 / BOARD_SIZE;  // 640 / 64 = 10
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    ctx.fillStyle = data.color;
-    ctx.fillRect(data.x * cellSize, data.y * cellSize, cellSize, cellSize);
-  });
+  try {
+    const cellsRef = collection(db, 'artworks', artworkId, 'cells');
+    const snapshot = await getDocs(cellsRef);
+    
+    const cellSize = 640 / BOARD_SIZE;
+    
+    // 배치 렌더링 최적화
+    ctx.save();
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if(data && data.color && typeof data.x === 'number' && typeof data.y === 'number') {
+        ctx.fillStyle = data.color;
+        ctx.fillRect(data.x * cellSize, data.y * cellSize, cellSize, cellSize);
+      }
+    });
+    ctx.restore();
+    
+  } catch(e) {
+    console.error('썸네일 렌더링 실패:', artworkId, e);
+  }
 }
 
 // ===================
@@ -451,7 +471,6 @@ createCanvas.addEventListener('touchend', () => {
 // ===================
 // 게시하기
 // ===================
-// 게시하기 - 수정된 버전
 document.getElementById('publishBtn').addEventListener('click', async () => {
   const title = document.getElementById('artworkTitle').value.trim();
   
@@ -460,7 +479,7 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
     return; 
   }
   
-  // 캔버스 데이터 추출 - 전체 픽셀 스캔
+  // 캔버스 데이터 추출
   const imageData = ctx.getImageData(0, 0, createCanvas.width, createCanvas.height);
   const cells = [];
   const cellSize = createCanvas.width / BOARD_SIZE;
@@ -508,6 +527,7 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
       creatorNickname: currentNickname
     });
     
+    // 셀 데이터를 배치로 저장
     for(const cell of cells) {
       const cellId = `${cell.x}_${cell.y}`;
       await setDoc(doc(db, 'artworks', artworkId, 'cells', cellId), {
@@ -516,6 +536,7 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
       });
     }
     
+    // 사용자 통계 업데이트
     const userRef = doc(db, 'users', currentUser.uid);
     await updateDoc(userRef, {
       totalPixels: increment(cells.length)
@@ -588,12 +609,17 @@ async function openArtwork(artworkId) {
   const contributors = new Set();
   const cellSize = modalCanvas.width / BOARD_SIZE;
   
+  // 배치 렌더링
+  mCtx.save();
   snapshot.forEach(doc => {
     const data = doc.data();
-    mCtx.fillStyle = data.color;
-    mCtx.fillRect(data.x * cellSize, data.y * cellSize, cellSize, cellSize);
-    if(data.nickname) contributors.add(data.nickname);
+    if(data && data.color && typeof data.x === 'number' && typeof data.y === 'number') {
+      mCtx.fillStyle = data.color;
+      mCtx.fillRect(data.x * cellSize, data.y * cellSize, cellSize, cellSize);
+      if(data.nickname) contributors.add(data.nickname);
+    }
   });
+  mCtx.restore();
   
   // 그리드
   mCtx.strokeStyle = '#e5e7eb';
