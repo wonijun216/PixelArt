@@ -471,9 +471,6 @@ createCanvas.addEventListener('touchend', () => {
 // ===================
 // 게시하기
 // ===================
-// ===================
-// 게시하기 (완전 수정)
-// ===================
 document.getElementById('publishBtn').addEventListener('click', async () => {
   const title = document.getElementById('artworkTitle').value.trim();
   
@@ -482,43 +479,30 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
     return; 
   }
   
+  // 캔버스 데이터 추출
+  const imageData = ctx.getImageData(0, 0, createCanvas.width, createCanvas.height);
   const cells = [];
   const cellSize = createCanvas.width / BOARD_SIZE;
   
-  // 각 그리드 셀을 직접 스캔
+  // 각 셀마다 대표 색상 추출
   for(let gridY = 0; gridY < BOARD_SIZE; gridY++) {
     for(let gridX = 0; gridX < BOARD_SIZE; gridX++) {
-      // 셀 내부의 여러 점을 확인 (더 정확한 샘플링)
-      const samplePoints = [
-        {x: gridX * cellSize + cellSize * 0.3, y: gridY * cellSize + cellSize * 0.3},
-        {x: gridX * cellSize + cellSize * 0.5, y: gridY * cellSize + cellSize * 0.5},
-        {x: gridX * cellSize + cellSize * 0.7, y: gridY * cellSize + cellSize * 0.7}
-      ];
+      // 셀의 중앙점 픽셀 확인
+      const centerPixelX = Math.floor(gridX * cellSize + cellSize / 2);
+      const centerPixelY = Math.floor(gridY * cellSize + cellSize / 2);
+      const index = (centerPixelY * createCanvas.width + centerPixelX) * 4;
       
-      let hasColor = false;
-      let cellColor = null;
+      const r = imageData.data[index];
+      const g = imageData.data[index + 1];
+      const b = imageData.data[index + 2];
       
-      for(const point of samplePoints) {
-        const px = Math.floor(point.x);
-        const py = Math.floor(point.y);
-        const imageData = ctx.getImageData(px, py, 1, 1);
-        const r = imageData.data[0];
-        const g = imageData.data[1];
-        const b = imageData.data[2];
-        
-        // 흰색이 아니면 색상 있음
-        if(r !== 255 || g !== 255 || b !== 255) {
-          hasColor = true;
-          cellColor = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-          break;
-        }
-      }
-      
-      if(hasColor && cellColor) {
+      // 흰색이 아닌 경우만 저장
+      if(r !== 255 || g !== 255 || b !== 255) {
+        const color = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
         cells.push({
           x: gridX, 
           y: gridY, 
-          color: cellColor, 
+          color, 
           nickname: currentNickname, 
           uid: currentUser.uid
         });
@@ -530,8 +514,6 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
     alert('최소 1개 이상의 픽셀을 칠해주세요'); 
     return; 
   }
-  
-  console.log('저장할 셀 개수:', cells.length); // 디버깅용
   
   try {
     const artworkId = 'artwork_' + Date.now();
@@ -545,7 +527,7 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
       creatorNickname: currentNickname
     });
     
-    // 셀 데이터 저장
+    // 셀 데이터를 배치로 저장
     for(const cell of cells) {
       const cellId = `${cell.x}_${cell.y}`;
       await setDoc(doc(db, 'artworks', artworkId, 'cells', cellId), {
@@ -563,7 +545,6 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
     alert('작품이 게시되었습니다!');
     showView('gallery');
   } catch(e) {
-    console.error('게시 오류:', e);
     alert('게시 실패: ' + e.message);
   }
 });
