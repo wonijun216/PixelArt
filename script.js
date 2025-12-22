@@ -446,6 +446,7 @@ createCanvas.addEventListener('touchend', () => {
 // ===================
 // 게시하기
 // ===================
+// 게시하기 - 수정된 버전
 document.getElementById('publishBtn').addEventListener('click', async () => {
   const title = document.getElementById('artworkTitle').value.trim();
   
@@ -454,16 +455,18 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
     return; 
   }
   
-  // 캔버스 데이터 추출
+  // 캔버스 데이터 추출 - 전체 픽셀 스캔
   const imageData = ctx.getImageData(0, 0, createCanvas.width, createCanvas.height);
   const cells = [];
   const cellSize = createCanvas.width / BOARD_SIZE;
   
-  for(let y = 0; y < BOARD_SIZE; y++) {
-    for(let x = 0; x < BOARD_SIZE; x++) {
-      const pixelX = Math.floor(x * cellSize + cellSize / 2);
-      const pixelY = Math.floor(y * cellSize + cellSize / 2);
-      const index = (pixelY * createCanvas.width + pixelX) * 4;
+  // 각 셀마다 대표 색상 추출
+  for(let gridY = 0; gridY < BOARD_SIZE; gridY++) {
+    for(let gridX = 0; gridX < BOARD_SIZE; gridX++) {
+      // 셀의 중앙점 픽셀 확인
+      const centerPixelX = Math.floor(gridX * cellSize + cellSize / 2);
+      const centerPixelY = Math.floor(gridY * cellSize + cellSize / 2);
+      const index = (centerPixelY * createCanvas.width + centerPixelX) * 4;
       
       const r = imageData.data[index];
       const g = imageData.data[index + 1];
@@ -472,7 +475,13 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
       // 흰색이 아닌 경우만 저장
       if(r !== 255 || g !== 255 || b !== 255) {
         const color = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-        cells.push({x, y, color, nickname: currentNickname, uid: currentUser.uid});
+        cells.push({
+          x: gridX, 
+          y: gridY, 
+          color, 
+          nickname: currentNickname, 
+          uid: currentUser.uid
+        });
       }
     }
   }
@@ -483,7 +492,6 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
   }
   
   try {
-    // 작품 문서 생성
     const artworkId = 'artwork_' + Date.now();
     await setDoc(doc(db, 'artworks', artworkId), {
       title,
@@ -495,7 +503,6 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
       creatorNickname: currentNickname
     });
     
-    // 셀 데이터 저장
     for(const cell of cells) {
       const cellId = `${cell.x}_${cell.y}`;
       await setDoc(doc(db, 'artworks', artworkId, 'cells', cellId), {
@@ -504,7 +511,6 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
       });
     }
     
-    // 사용자 통계 업데이트
     const userRef = doc(db, 'users', currentUser.uid);
     await updateDoc(userRef, {
       totalPixels: increment(cells.length)
