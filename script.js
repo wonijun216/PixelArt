@@ -211,7 +211,7 @@ function renderArtworks() {
   grid.innerHTML = filtered.map(artwork => `
     <div class="artwork-card" data-artwork-id="${artwork.id}">
       <div class="artwork-preview">
-        <canvas id="thumb-${artwork.id}" width="128" height="128"></canvas>
+        <canvas id="thumb-${artwork.id}" width="640" height="640"></canvas>
       </div>
       <div class="artwork-info">
         <h3 class="artwork-title">${artwork.title || '제목 없음'}</h3>
@@ -241,13 +241,18 @@ async function renderThumbnail(artworkId) {
   if(!canvas) return;
   
   const ctx = canvas.getContext('2d');
+  
+  // 캔버스 크기를 640x640으로 설정
+  canvas.width = 640;
+  canvas.height = 640;
+  
   ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillRect(0, 0, 640, 640);
   
   const cellsRef = collection(db, 'artworks', artworkId, 'cells');
   const snapshot = await getDocs(cellsRef);
   
-  const cellSize = 128 / BOARD_SIZE;
+  const cellSize = 640 / BOARD_SIZE;  // 640 / 64 = 10
   snapshot.forEach(doc => {
     const data = doc.data();
     ctx.fillStyle = data.color;
