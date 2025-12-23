@@ -230,10 +230,12 @@ function renderArtworks() {
     });
   });
   
-  // 썸네일 렌더링 (DOM이 준비된 후)
-  setTimeout(() => {
-    renderThumbnailsSequentially(filtered);
-  }, 100);
+  // requestAnimationFrame을 사용하여 DOM이 완전히 준비된 후 렌더링
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      renderThumbnailsSequentially(filtered);
+    });
+  });
 }
 
 // 병렬 렌더링으로 속도 개선
