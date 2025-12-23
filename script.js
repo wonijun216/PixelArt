@@ -507,38 +507,44 @@ document.getElementById('publishBtn').addEventListener('click', async () => {
     return; 
   }
   
-  // 캔버스 데이터 추출
-  const imageData = ctx.getImageData(0, 0, createCanvas.width, createCanvas.height);
-  const cells = [];
-  const cellSize = createCanvas.width / BOARD_SIZE;
-  
-  console.log('게시 시작: 캔버스 데이터 추출 중...');
-  
-  // 각 셀마다 대표 색상 추출
-  for(let gridY = 0; gridY < BOARD_SIZE; gridY++) {
-    for(let gridX = 0; gridX < BOARD_SIZE; gridX++) {
-      // 셀의 중앙점 픽셀 확인
-      const centerPixelX = Math.floor(gridX * cellSize + cellSize / 2);
-      const centerPixelY = Math.floor(gridY * cellSize + cellSize / 2);
-      const index = (centerPixelY * createCanvas.width + centerPixelX) * 4;
-      
-      const r = imageData.data[index];
-      const g = imageData.data[index + 1];
-      const b = imageData.data[index + 2];
-      
-      // 흰색이 아닌 경우만 저장
-      if(r !== 255 || g !== 255 || b !== 255) {
-        const color = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-        cells.push({
-          x: gridX, 
-          y: gridY, 
-          color, 
-          nickname: currentNickname, 
-          uid: currentUser.uid
-        });
-      }
+// 캔버스 데이터 추출
+const imageData = ctx.getImageData(0, 0, createCanvas.width, createCanvas.height);
+const cells = [];
+const cellSize = createCanvas.width / BOARD_SIZE;
+
+console.log('게시 시작: 캔버스 데이터 추출 중...');
+
+// 각 셀마다 대표 색상 추출 (가장자리 픽셀 100% 정확히 읽기)
+for(let gridY = 0; gridY < BOARD_SIZE; gridY++) {
+  for(let gridX = 0; gridX < BOARD_SIZE; gridX++) {
+    // 셀의 왼쪽 위 코너 픽셀 사용 (항상 canvas 경계 내 안전한 위치)
+    const pixelX = Math.floor(gridX * cellSize);
+    const pixelY = Math.floor(gridY * cellSize);
+    
+    // canvas 경계 초과 방지 (추가 안전장치)
+    const safeX = Math.min(pixelX, createCanvas.width - 1);
+    const safeY = Math.min(pixelY, createCanvas.height - 1);
+    
+    const index = (safeY * createCanvas.width + safeX) * 4;
+   
+    const r = imageData.data[index];
+    const g = imageData.data[index + 1];
+    const b = imageData.data[index + 2];
+    const a = imageData.data[index + 3]; // 알파 채널 확인
+   
+    // 흰색(완전 불투명) 배경이 아닌 경우만 저장
+    if(!(r === 255 && g === 255 && b === 255 && a === 255)) {
+      const color = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+      cells.push({
+        x: gridX,
+        y: gridY,
+        color,
+        nickname: currentNickname,
+        uid: currentUser.uid
+      });
     }
   }
+}
   
   console.log(`총 ${cells.length}개 셀 추출됨`);
   
