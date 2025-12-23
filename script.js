@@ -211,7 +211,7 @@ function renderArtworks() {
   grid.innerHTML = filtered.map(artwork => `
     <div class="artwork-card" data-artwork-id="${artwork.id}">
       <div class="artwork-preview">
-        <canvas id="thumb-${artwork.id}" width="640" height="640"></canvas>
+        <canvas id="thumb-${artwork.id}"></canvas>
       </div>
       <div class="artwork-info">
         <h3 class="artwork-title">${artwork.title || '제목 없음'}</h3>
@@ -230,8 +230,10 @@ function renderArtworks() {
     });
   });
   
-  // 순차적 썸네일 렌더링
-  renderThumbnailsSequentially(filtered);
+  // 썸네일 렌더링 (DOM이 준비된 후)
+  setTimeout(() => {
+    renderThumbnailsSequentially(filtered);
+  }, 100);
 }
 
 // 병렬 렌더링으로 속도 개선
@@ -240,7 +242,7 @@ async function renderThumbnailsSequentially(artworksList) {
   await Promise.all(renderPromises);
 }
 
-// 썸네일 렌더링 (개선 및 디버깅 추가)
+// 썸네일 렌더링 (크기 조정 추가)
 async function renderThumbnail(artworkId) {
   const canvas = document.getElementById(`thumb-${artworkId}`);
   if(!canvas) {
@@ -250,13 +252,21 @@ async function renderThumbnail(artworkId) {
   
   const ctx = canvas.getContext('2d');
   
-  // 캔버스 크기 설정
-  canvas.width = 640;
-  canvas.height = 640;
+  // 실제 표시될 크기 가져오기
+  const displayWidth = canvas.clientWidth || 240;
+  const displayHeight = canvas.clientHeight || 240;
+  
+  // 캔버스 크기를 표시 크기에 맞게 설정 (고해상도 대응)
+  const scale = window.devicePixelRatio || 1;
+  canvas.width = displayWidth * scale;
+  canvas.height = displayHeight * scale;
+  
+  // 컨텍스트 스케일 조정
+  ctx.scale(scale, scale);
   
   // 배경 흰색
   ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, 640, 640);
+  ctx.fillRect(0, 0, displayWidth, displayHeight);
   
   try {
     const cellsRef = collection(db, 'artworks', artworkId, 'cells');
@@ -269,7 +279,8 @@ async function renderThumbnail(artworkId) {
       return;
     }
     
-    const cellSize = 640 / BOARD_SIZE;
+    // 표시 크기에 맞게 셀 크기 계산
+    const cellSize = displayWidth / BOARD_SIZE;
     
     // 모든 셀을 배열로 변환 후 한번에 렌더링
     const cells = [];
@@ -288,7 +299,7 @@ async function renderThumbnail(artworkId) {
     });
     ctx.restore();
     
-    console.log(`작품 ${artworkId}: ${cells.length}개 셀 렌더링 완료`);
+    console.log(`작품 ${artworkId}: ${cells.length}개 셀 렌더링 완료 (크기: ${displayWidth}x${displayHeight})`);
     
   } catch(e) {
     console.error('썸네일 렌더링 실패:', artworkId, e);
