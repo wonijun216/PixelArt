@@ -1,139 +1,70 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>픽셀보드 2.0</title>
-<link rel="stylesheet" href="styles.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>픽셀보드</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-<header>
-  <div class="header-inner">
-    <h1>🎨 픽셀보드</h1>
-    <div class="header-actions">
-      <span id="userNicknameDisplay" style="color:#666; font-size:14px;" class="hidden"></span>
-      <button id="logoutBtn" class="btn hidden">로그아웃</button>
-    </div>
-  </div>
-</header>
-
-<div class="container">
-  <!-- 로그인/회원가입 화면 -->
-  <div id="authView" class="auth-form">
-    <h2>픽셀보드에 오신 것을 환영합니다</h2>
-    <div class="form-group">
-      <label>이메일</label>
-      <input type="email" id="authEmail" placeholder="이메일">
-    </div>
-    <div class="form-group">
-      <label>비밀번호</label>
-      <input type="password" id="authPassword" placeholder="비밀번호 (6자 이상)">
-    </div>
-    <div class="form-group">
-      <label>닉네임 (회원가입 시)</label>
-      <input type="text" id="authNickname" placeholder="닉네임 (최대 12자)" maxlength="12">
-    </div>
-    <div style="display:flex; gap:8px;">
-      <button id="loginBtn" class="btn primary" style="flex:1;">로그인</button>
-      <button id="signupBtn" class="btn" style="flex:1;">회원가입</button>
-    </div>
-  </div>
-
-  <!-- 갤러리 뷰 -->
-  <div id="galleryView" class="hidden">
-    <div class="gallery-layout">
-      <aside class="sidebar">
-        <h3>🏆 명예의 전당</h3>
-        <div id="leaderboard">(로딩중...)</div>
-      </aside>
-
-      <div class="main-content">
-        <div class="controls-bar">
-          <div class="search-box">
-            <input type="text" id="searchInput" placeholder="작품 검색...">
-          </div>
-          <button id="createNewBtn" class="btn primary">✏️ 작품 만들기</button>
+    <div class="wrap">
+        <header>
+            <h1>Pixel Board</h1>
+            <div class="pill">보드: <span id="boardName">(로딩중)</span></div>
+            <button id="logoutBtn" class="btn hidden">로그아웃</button>
+        </header>
+        <div class="controls" id="authControls">
+            <div>
+                <label>이메일</label><br/>
+                <input id="email" type="email" placeholder="이메일을 입력하세요" />
+            </div>
+            <div>
+                <label>비밀번호</label><br/>
+                <input id="password" type="password" placeholder="비밀번호를 입력하세요" />
+            </div>
+            <button id="signupBtn" class="btn">회원가입</button>
+            <button id="loginBtn" class="btn primary">로그인</button>
         </div>
-
-        <div class="filter-group" style="margin-bottom:20px;">
-          <button class="filter-btn active" data-filter="latest">최신순</button>
-          <button class="filter-btn" data-filter="oldest">오래된순</button>
-          <button class="filter-btn" data-filter="popular">인기순</button>
+        <div class="controls hidden" id="galleryControls">
+            <button id="newArtworkBtn" class="btn primary">작품 만들기</button>
+            <input id="searchInput" type="text" placeholder="작품 검색" />
+            <select id="sortSelect">
+                <option value="popular">인기순</option>
+                <option value="recent">최신순</option>
+            </select>
         </div>
-
-        <div id="artworksGrid" class="artworks-grid"></div>
-        
+        <div id="gallery" class="galleryContainer"></div>
         <div id="pagination" class="pagination"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 작품 만들기 뷰 -->
-  <div id="createView" class="hidden create-view">
-    <div class="create-header">
-      <input type="text" id="artworkTitle" placeholder="작품 제목을 입력하세요" maxlength="50">
-    </div>
-
-    <div class="canvas-area">
-      <div class="canvas-wrapper">
-        <canvas id="createCanvas" width="640" height="640"></canvas>
-      </div>
-      <div class="canvas-controls">
-        <button class="color-btn active" data-color="#3b82f6" style="background:#3b82f6;" title="파란색"></button>
-        <button class="color-btn" data-color="#ef4444" style="background:#ef4444;" title="빨간색"></button>
-        <button class="color-btn" data-color="#22c55e" style="background:#22c55e;" title="초록색"></button>
-        <button class="color-btn" data-color="#eab308" style="background:#eab308;" title="노란색"></button>
-        <button class="color-btn" data-color="#a855f7" style="background:#a855f7;" title="보라색"></button>
-        <button class="color-btn" data-color="#ec4899" style="background:#ec4899;" title="분홍색"></button>
-        <input type="color" id="customColor" title="커스텀 색상">
-        <button id="eraserBtn" class="btn eraser-off">
-          <span class="eraser-indicator"></span>
-          지우개
-        </button>
-        <button id="clearBtn" class="btn">초기화</button>
-      </div>
-    </div>
-
-    <div class="action-bar">
-      <button id="cancelCreateBtn" class="btn">취소</button>
-      <button id="publishBtn" class="btn primary">게시하기</button>
-    </div>
-  </div>
-</div>
-
-<!-- 작품 상세보기 모달 -->
-<div id="artworkModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2 id="modalTitle" style="margin:0; font-size:20px;"></h2>
-      <button class="modal-close" id="modalCloseBtn">×</button>
-    </div>
-    <div class="modal-body">
-      <canvas id="modalCanvas" class="modal-canvas" width="640" height="640"></canvas>
-      <div class="modal-info">
-        <div>
-          <div style="font-size:14px; color:#666;">
-            작가: <span id="modalCreator"></span> | 
-            기여자 <span id="modalContributors"></span>명
-          </div>
+        <div class="boardContainer hidden" id="boardView">
+            <div class="boardWrap">
+                <input id="artworkTitle" type="text" placeholder="작품 제목" class="hidden" />
+                <canvas id="board" width="768" height="768"></canvas>
+                <div class="tip">빈칸을 클릭하거나 드래그해서 색칠하세요. 닉네임을 입력해야 기록됩니다.</div>
+                <div class="controls" id="boardControls">
+                    <div>
+                        <label>닉네임</label><br/>
+                        <input id="nickname" type="text" placeholder="예: @joongdonghs" maxlength="12" />
+                    </div>
+                    <div>
+                        <label>색상</label><br/>
+                        <input id="picker" type="color" value="#a7f3d0" />
+                    </div>
+                    <button id="shareBtn" class="btn">링크 복사</button>
+                    <button id="eraseBtn" class="btn">지우개</button>
+                    <button id="likeBtn" class="btn">❤️ 좋아요</button>
+                    <span id="likeCount" class="muted">0</span>
+                    <button id="backToGallery" class="btn">갤러리로 돌아가기</button>
+                </div>
+            </div>
+            <div id="contributorsWrap">
+                <h3>기여자 명단</h3>
+                <div id="contributorsList">(로딩중)</div>
+            </div>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button id="likeButton" class="like-button">
-            <span>❤️</span>
-            <span id="modalLikes">0</span>
-          </button>
-          <button id="deleteArtworkBtn" class="btn danger hidden">삭제</button>
-        </div>
-      </div>
-      <div class="contributors-section">
-        <h4>기여자 명단</h4>
-        <div id="modalContributorsList" class="contributors-list"></div>
-      </div>
+        <footer>
+            <div>© <span id="y"></span> 중동고등학교 프로그래밍부</div>
+        </footer>
     </div>
-  </div>
-</div>
-
-<script type="module" src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
