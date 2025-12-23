@@ -248,18 +248,19 @@ h1 {
 
 .artwork-preview {
   width:100%;
-  padding-top:100%; /* 1:1 비율 유지 */
+  aspect-ratio: 1 / 1; /* padding-top 대신 aspect-ratio 사용 */
   background:#f9fafb;
   position:relative;
   overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .artwork-preview canvas {
-  position:absolute;
-  top:0;
-  left:0;
   width:100% !important;
   height:100% !important;
+  object-fit:contain;
   image-rendering:pixelated;
   image-rendering:-moz-crisp-edges;
   image-rendering:crisp-edges;
