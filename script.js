@@ -501,62 +501,73 @@ createCanvas.addEventListener('touchend', () => {
 // ===================
 document.getElementById('publishBtn').addEventListener('click', async () => {
   const title = document.getElementById('artworkTitle').value.trim();
-  
-  if(!title) { 
-    alert('작품 제목을 입력하세요'); 
-    return; 
+ 
+  if(!title) {
+    alert('작품 제목을 입력하세요');
+    return;
   }
-  
-// 캔버스 데이터 추출
-const imageData = ctx.getImageData(0, 0, createCanvas.width, createCanvas.height);
-const cells = [];
-const cellSize = createCanvas.width / BOARD_SIZE;
-
-console.log('게시 시작: 캔버스 데이터 추출 중...');
-
-// 각 셀마다 대표 색상 추출 (가장자리 픽셀 100% 정확히 읽기)
-for(let gridY = 0; gridY < BOARD_SIZE; gridY++) {
-  for(let gridX = 0; gridX < BOARD_SIZE; gridX++) {
-    // 셀의 왼쪽 위 코너 픽셀 사용 (항상 canvas 경계 내 안전한 위치)
-    const pixelX = Math.floor(gridX * cellSize);
-    const pixelY = Math.floor(gridY * cellSize);
-    
-    // canvas 경계 초과 방지 (추가 안전장치)
-    const safeX = Math.min(pixelX, createCanvas.width - 1);
-    const safeY = Math.min(pixelY, createCanvas.height - 1);
-    
-    const index = (safeY * createCanvas.width + safeX) * 4;
-   
-    const r = imageData.data[index];
-    const g = imageData.data[index + 1];
-    const b = imageData.data[index + 2];
-    const a = imageData.data[index + 3]; // 알파 채널 확인
-   
-    // 흰색(완전 불투명) 배경이 아닌 경우만 저장
-    if(!(r === 255 && g === 255 && b === 255 && a === 255)) {
-      const color = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-      cells.push({
-        x: gridX,
-        y: gridY,
-        color,
-        nickname: currentNickname,
-        uid: currentUser.uid
-      });
+ 
+  // ===== 핵심 수정: 캔버스의 실제 drawing buffer 크기 사용 =====
+  const canvas = createCanvas;
+  const ctx = canvas.getContext('2d');
+ 
+  // High DPI 대응: 실제 픽셀 데이터 크기 확인
+  const actualWidth = canvas.width;   // 실제 buffer width (예: 1280)
+  const actualHeight = canvas.height; // 실제 buffer height (예: 1280)
+ 
+  if(actualWidth !== actualHeight || actualWidth % BOARD_SIZE !== 0) {
+    alert('캔버스 설정 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.');
+    return;
+  }
+ 
+  const imageData = ctx.getImageData(0, 0, actualWidth, actualHeight);
+  const cells = [];
+  const cellSize = actualWidth / BOARD_SIZE;  // 정확한 실제 픽셀 기준 셀 크기
+ 
+  console.log('게시 시작: 캔버스 데이터 추출 중... (실제 크기:', actualWidth, 'x', actualHeight, ')');
+ 
+  for(let gridY = 0; gridY < BOARD_SIZE; gridY++) {
+    for(let gridX = 0; gridX < BOARD_SIZE; gridX++) {
+      // 셀의 왼쪽 위 픽셀 (실제 buffer 기준)
+      const pixelX = Math.floor(gridX * cellSize);
+      const pixelY = Math.floor(gridY * cellSize);
+ 
+      // 안전장치: 경계 초과 방지
+      const safeX = Math.min(pixelX, actualWidth - 1);
+      const safeY = Math.min(pixelY, actualHeight - 1);
+ 
+      const index = (safeY * actualWidth + safeX) * 4;
+ 
+      const r = imageData.data[index];
+      const g = imageData.data[index + 1];
+      const b = imageData.data[index + 2];
+      const a = imageData.data[index + 3];
+ 
+      // 완전한 흰색 배경(불투명)이 아닌 경우만 저장
+      if(!(r === 255 && g === 255 && b === 255 && a === 255)) {
+        const color = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+        cells.push({
+          x: gridX,
+          y: gridY,
+          color,
+          nickname: currentNickname,
+          uid: currentUser.uid
+        });
+      }
     }
   }
-}
-  
+ 
   console.log(`총 ${cells.length}개 셀 추출됨`);
-  
-  if(cells.length === 0) { 
-    alert('최소 1개 이상의 픽셀을 칠해주세요'); 
-    return; 
+ 
+  if(cells.length === 0) {
+    alert('최소 1개 이상의 픽셀을 칠해주세요');
+    return;
   }
-  
+ 
+  // 나머지 게시 로직은 기존과 동일
   try {
     const artworkId = 'artwork_' + Date.now();
-    
-    console.log('작품 문서 생성 중...');
+   
     await setDoc(doc(db, 'artworks', artworkId), {
       title,
       createdAt: serverTimestamp(),
@@ -566,9 +577,7 @@ for(let gridY = 0; gridY < BOARD_SIZE; gridY++) {
       creatorUid: currentUser.uid,
       creatorNickname: currentNickname
     });
-    
-    console.log('셀 데이터 저장 중...');
-    // 셀 데이터를 배치로 저장
+   
     let savedCount = 0;
     for(const cell of cells) {
       const cellId = `${cell.x}_${cell.y}`;
@@ -577,21 +586,15 @@ for(let gridY = 0; gridY < BOARD_SIZE; gridY++) {
         updatedAt: serverTimestamp()
       });
       savedCount++;
-      
-      // 진행상황 로그 (매 100개마다)
       if(savedCount % 100 === 0) {
         console.log(`${savedCount}/${cells.length} 셀 저장 완료...`);
       }
     }
-    
-    console.log(`모든 ${savedCount}개 셀 저장 완료!`);
-    
-    // 사용자 통계 업데이트
-    const userRef = doc(db, 'users', currentUser.uid);
-    await updateDoc(userRef, {
+   
+    await updateDoc(doc(db, 'users', currentUser.uid), {
       totalPixels: increment(cells.length)
     });
-    
+   
     alert('작품이 게시되었습니다!');
     showView('gallery');
   } catch(e) {
